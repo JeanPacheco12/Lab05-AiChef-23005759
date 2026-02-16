@@ -39,6 +39,13 @@ import kotlin.coroutines.resumeWithException
  *
  * =============================================================================
  */
+sealed class CaptureError {
+    data object CameraClosed : CaptureError()      // La cámara se cerró inesperadamente.
+    data object HardwareError : CaptureError()     // Fallo de captura por hardware.
+    data object FileIOError : CaptureError()       // Error de I/O (almacenamiento o permisos).
+    data class Unknown(val code: Int) : CaptureError() // Por si acaso ocurre otro tipo de error.
+}
+
 class CameraUtils(private val context: Context) {
 
     // Formato para nombres de archivo únicos basados en timestamp
