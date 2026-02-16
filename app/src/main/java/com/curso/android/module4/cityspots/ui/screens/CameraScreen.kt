@@ -134,24 +134,19 @@ fun CameraScreen(
     // EFECTOS
     // =========================================================================
 
-    // Manejar resultado de captura
+    // Manejar resultado de captura.
     LaunchedEffect(captureResult) {
-        when (captureResult) {
-            true -> {
-                viewModel.clearCaptureResult()
-                onNavigateBack() // Volver al mapa después de captura exitosa
-            }
-            false -> {
-                snackbarHostState.showSnackbar("Error al capturar la foto")
-                viewModel.clearCaptureResult()
-            }
-            null -> { /* Sin resultado pendiente */ }
+        if (captureResult == true) { // Solo nos importa si fue exitoso.
+            viewModel.clearCaptureResult()
+            onNavigateBack()
         }
+        // Si es false, no hacemos nada aquí, dejamos que el LaunchedEffect(errorMessage) actúe.
     }
 
-    // Mostrar errores
+    // Mostrar errores (Este se encarga de todo lo malo que suceda).
     LaunchedEffect(errorMessage) {
         errorMessage?.let { message ->
+            // Muestra el mensaje específico (Cámara cerrada, hardware, etc.)
             snackbarHostState.showSnackbar(message)
             viewModel.clearError()
         }
