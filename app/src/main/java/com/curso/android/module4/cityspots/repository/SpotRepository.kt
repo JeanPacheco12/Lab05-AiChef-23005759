@@ -9,6 +9,9 @@ import com.curso.android.module4.cityspots.utils.CameraUtils
 import com.curso.android.module4.cityspots.utils.CoordinateValidator
 import com.curso.android.module4.cityspots.utils.LocationUtils
 import kotlinx.coroutines.flow.Flow
+// Imports importantes para el manejo de reportes de errores en el repository.
+import com.curso.android.module4.cityspots.utils.CaptureError
+import com.curso.android.module4.cityspots.utils.PhotoCaptureException
 
 /**
  * =============================================================================
@@ -171,15 +174,22 @@ class SpotRepository(
      * @throws Exception si falla la captura de foto
      */
     suspend fun createSpot(imageCapture: ImageCapture): CreateSpotResult {
-        // 1. Capturar la foto
-        val photoUri = capturePhoto(imageCapture)
+        // 1. Capturar foto con manejo de errores.
+        val photoUri = try {
+            cameraUtils.capturePhoto(imageCapture)
+        } catch (e: PhotoCaptureException) {
+            // Si la cámara falla, retornamos el error específico y salimos.
+            return CreateSpotResult.PhotoCaptureFailed(e.error)
+        } catch (e: Exception) {
+            // Por si ocurre algo totalmente inesperado.
+            return CreateSpotResult.PhotoCaptureFailed(CaptureError.Unknown(-1))
+        }
 
-        // 2. Obtener ubicación actual
-        val location = getCurrentLocation()
+        // 2. Obtener ubicación.
+        val location = locationUtils.getCurrentLocation()
 
-        // Si no hay ubicación, no podemos crear el spot
+        // Si no hay una ubicación, borramos la foto y retornamos error.
         if (location == null) {
-            // Limpiar la foto capturada para no dejar archivos huérfanos
             cameraUtils.deleteImage(photoUri)
             return CreateSpotResult.NoLocation
         }
@@ -228,4 +238,5 @@ sealed class CreateSpotResult {
     data class Success(val spot: SpotEntity) : CreateSpotResult()
     data object NoLocation : CreateSpotResult()
     data class InvalidCoordinates(val message: String) : CreateSpotResult()
+    data class PhotoCaptureFailed(val error: CaptureError) : CreateSpotResult()
 }
