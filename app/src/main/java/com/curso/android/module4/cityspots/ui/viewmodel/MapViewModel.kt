@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+// Import para CaptureError
+import com.curso.android.module4.cityspots.utils.CaptureError
+
 /**
  * =============================================================================
  * MapViewModel - ViewModel para la pantalla principal del mapa
@@ -157,30 +160,40 @@ class MapViewModel(
      */
     fun createSpot(imageCapture: ImageCapture) {
         viewModelScope.launch {
-            try {
-                _isLoading.value = true
+            _isLoading.value = true // Movemos esto fuera del try para asegurar que inicie.
 
-                when (val result = repository.createSpot(imageCapture)) {
-                    is CreateSpotResult.Success -> {
-                        _captureResult.value = true
-                    }
+            // Ya no necesitamos el try-catch envolviendo todo porque el Repository
+            // atrapa las excepciones de cámara y devuelve un objeto de resultado seguro.
+            when (val result = repository.createSpot(imageCapture)) {
+                is CreateSpotResult.Success -> {
+                    _captureResult.value = true
+                    _errorMessage.value = "Spot creado exitosamente!" // Feedback.
+                }
 
-                    is CreateSpotResult.NoLocation -> {
-                        _errorMessage.value = "No se pudo obtener la ubicación. Verifica que el GPS esté activado."
-                        _captureResult.value = false
-                    }
+                is CreateSpotResult.NoLocation -> {
+                    _errorMessage.value = "No se pudo obtener la ubicación. Verifica que el GPS esté activado."
+                    _captureResult.value = false
+                }
 
-                    is CreateSpotResult.InvalidCoordinates -> {
-                        _errorMessage.value = result.message
-                        _captureResult.value = false
+                is CreateSpotResult.InvalidCoordinates -> {
+                    _errorMessage.value = result.message
+                    _captureResult.value = false
+                }
+
+                // Manejo de errores granulares de cámara
+                is CreateSpotResult.PhotoCaptureFailed -> {
+                    _captureResult.value = false
+                    // Traduccion de error técnico a mensaje amigable para el usuario.
+                    _errorMessage.value = when (result.error) {
+                        CaptureError.CameraClosed -> "La cámara se cerró inesperadamente."
+                        CaptureError.HardwareError -> "Error de hardware al capturar la imagen."
+                        CaptureError.FileIOError -> "No hay espacio o permisos para guardar la foto."
+                        is CaptureError.Unknown -> "Error desconocido de cámara (Cód: ${result.error.code})"
                     }
                 }
-            } catch (e: Exception) {
-                _errorMessage.value = "Error al capturar: ${e.message}"
-                _captureResult.value = false
-            } finally {
-                _isLoading.value = false
             }
+
+            _isLoading.value = false
         }
     }
 
