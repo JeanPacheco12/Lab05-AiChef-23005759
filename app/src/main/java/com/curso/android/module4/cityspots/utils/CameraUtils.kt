@@ -46,6 +46,9 @@ sealed class CaptureError {
     data class Unknown(val code: Int) : CaptureError() // Por si acaso ocurre otro tipo de error.
 }
 
+// "Sobre" de envio de errores, excepcion personalizada.
+class PhotoCaptureException(val error: CaptureError) : Exception()
+
 class CameraUtils(private val context: Context) {
 
     // Formato para nombres de archivo únicos basados en timestamp
@@ -90,40 +93,47 @@ class CameraUtils(private val context: Context) {
      * @return URI del archivo guardado
      * @throws ImageCaptureException si falla la captura
      */
+
+    // Actualizacion de la funcion capturePhoto.
     suspend fun capturePhoto(imageCapture: ImageCapture): Uri {
         return suspendCancellableCoroutine { continuation ->
-            // Crear archivo de destino
+            // Crear archivo de destino.
             val photoFile = createImageFile()
 
-            // Configurar opciones de salida
-            // OutputFileOptions define dónde y cómo guardar la imagen
+            // Configurar opciones de salida.
             val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
 
-            // Ejecutar captura en el executor principal
-            // NOTA: La captura real es asíncrona, no bloquea el main thread
+            // Ejecutar captura.
             imageCapture.takePicture(
                 outputOptions,
                 ContextCompat.getMainExecutor(context),
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                        // Éxito: retornar URI del archivo
+                        // Éxito: retornar URI del archivo.
                         val savedUri = Uri.fromFile(photoFile)
                         continuation.resume(savedUri)
                     }
 
                     override fun onError(exception: ImageCaptureException) {
-                        // Error: propagar excepción
-                        // Limpiar archivo si se creó pero falló la escritura
+                        // Limpiar archivo si se creó pero falló la escritura.
                         photoFile.delete()
-                        continuation.resumeWithException(exception)
+
+                        // CAMBIO IMPORTANTE: Mapeo de errores de CameraX al dominio.
+                        val error = when (exception.imageCaptureError) {
+                            ImageCapture.ERROR_CAMERA_CLOSED -> CaptureError.CameraClosed
+                            ImageCapture.ERROR_CAPTURE_FAILED -> CaptureError.HardwareError
+                            ImageCapture.ERROR_FILE_IO -> CaptureError.FileIOError
+                            else -> CaptureError.Unknown(exception.imageCaptureError)
+                        }
+
+                        // CAMBIO TAMBIEN IMPORTANTE: Se devuelve la excepción personalizada.
+                        continuation.resumeWithException(PhotoCaptureException(error))
                     }
                 }
             )
 
-            // Limpieza si la coroutine se cancela antes de completar
+            // Limpieza si la coroutine se cancela.
             continuation.invokeOnCancellation {
-                // Nota: No podemos cancelar takePicture una vez iniciado
-                // pero podemos limpiar el archivo si existe
                 if (photoFile.exists()) {
                     photoFile.delete()
                 }
