@@ -211,5 +211,36 @@ class MapViewModel(
         _errorMessage.value = null
     }
 
+    // Nueva función de eliminación de Spot.
+
+    /**
+     * Elimina un spot seleccionado
+     *
+     * Se comunica con el Repository para:
+     * 1. Borrar el registro de la BD (Room)
+     * 2. Borrar el archivo de imagen físico (Storage)
+     *
+     * @param spot La entidad a eliminar
+     */
+    fun deleteSpot(spot: SpotEntity) {
+        viewModelScope.launch {
+            try {
+                // Indicamos que estamos trabajando.
+                _isLoading.value = true
+
+                // Llamamos al repositorio para que haga su función (BD + Archivo).
+                repository.deleteSpot(spot)
+
+                // Feedback al usuario.
+                _errorMessage.value = "Spot eliminado correctamente"
+            } catch (e: Exception) {
+                // Si algo falla, avisamos
+                _errorMessage.value = "Error al eliminar: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
 
 }
