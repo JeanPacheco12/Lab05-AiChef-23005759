@@ -224,6 +224,33 @@ class SpotRepository(
         // Retornar el spot con el ID generado
         return CreateSpotResult.Success(spot.copy(id = id))
     }
+
+    // Nueva función añadida
+
+    /**
+     * Elimina un spot completo: borra de BD + borra archivo de foto
+     *
+     * CUMPLE REQUERIMIENTO PARTE 2:
+     * - Integridad de datos: Se elimina el registro SQL.
+     * - Limpieza de almacenamiento: Se elimina el archivo JPG.
+     *
+     * @param spot El spot a eliminar (necesitamos la entidad completa para tener la URI)
+     */
+    suspend fun deleteSpot(spot: SpotEntity) {
+        // 1. Borrar de la base de datos (Usando el método que creamos en el DAO).
+        spotDao.deleteSpot(spot.id)
+
+        // 2. Borrar el archivo físico de la imagen.
+        // Convertimos el String persistido de vuelta a Uri para que CameraUtils lo entienda.
+        try {
+            val photoUri = Uri.parse(spot.imageUri)
+            cameraUtils.deleteImage(photoUri)
+        } catch (e: Exception) {
+            // Si el archivo ya no existe o hay error de IO, no queremos que la app colapse.
+            // El usuario ya borró el spot de la lista, que es lo que le importa.
+            e.printStackTrace()
+        }
+    }
 }
 
 /**
