@@ -85,6 +85,20 @@ interface SpotDao {
     @Query("SELECT COUNT(*) FROM spots")
     suspend fun getSpotCount(): Int
 
+    // Nueva implementacion.
+
+    /**
+     * Elimina un spot específico de la base de datos.
+     *
+     * CONCEPTO: Operación de borrado
+     * Elimina la fila correspondiente al ID proporcionado.
+     * Esta operación es destructiva y no se puede deshacer en la BD.
+     *
+     * @param id El ID del spot a eliminar.
+     */
+    @Query("DELETE FROM spots WHERE id = :id")
+    suspend fun deleteSpot(id: Long)
+
 
 
 
