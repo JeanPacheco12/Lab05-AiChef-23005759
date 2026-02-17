@@ -62,6 +62,6 @@ El proyecto sigue una arquitectura **MVVM (Model-View-ViewModel)** recomendada p
 
 ## Video Explicativo
 
-[]
+[https://youtu.be/yquQuXq41XM]
 
 ---
